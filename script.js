@@ -1,8 +1,13 @@
 const player = document.getElementById('player');
 const gameWorld = document.getElementById('game-world');
 const timerDisplay = document.getElementById('timer');
-const scoreDisplay = document.getElementById('score'); // Get the score display
+const scoreDisplay = document.getElementById('score');
+const waterProgress = document.getElementById('water-progress');
+const messageContainer = document.getElementById('message-container');
+
 const platforms = Array.from(document.getElementsByClassName('platform'));
+let waterCans = Array.from(document.querySelectorAll('.water-can'));
+const lifeDrops = Array.from(document.querySelectorAll('.life-drop'));
 
 // Physics and movement variables
 let positionX = 50;
@@ -37,18 +42,34 @@ function startTimer() {
 }
 
 // Score tracking
-let score = 0; // Track the player's score
+let score = 0;
 
-// Get all water can images (using a class for easier selection)
-const waterCans = Array.from(document.querySelectorAll('.water-can'));
+// Prevent scroll with space/arrow keys
+window.addEventListener('keydown', function (e) {
+  const keysToBlock = ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+  if (keysToBlock.includes(e.code)) {
+    e.preventDefault();
+  }
+}, false);
 
-// Function to reset the game state
+// Show motivational pickup message
+function showMessage(text) {
+  const message = document.createElement('div');
+  message.className = 'pickup-message';
+  message.textContent = text;
+  message.style.left = `${positionX + 10}px`;
+  message.style.top = `${positionY - 10}px`;
+  messageContainer.appendChild(message);
+  setTimeout(() => {
+    message.remove();
+  }, 1500);
+}
+
+// Reset the game state
 function resetGame() {
-  // Reset score
+  // Reset score and timer
   score = 0;
   scoreDisplay.textContent = `Score: ${score.toString().padStart(3, '0')}`;
-
-  // Reset timer
   timer = 0;
   timerDisplay.textContent = '00:00';
   hasMoved = false;
@@ -65,19 +86,19 @@ function resetGame() {
   player.style.left = `${positionX}px`;
   player.style.top = `${positionY}px`;
 
-  // Reset water cans (show them again)
-  for (let i = 0; i < waterCans.length; i++) {
-    if (waterCans[i]) {
-      waterCans[i].style.display = '';
-    }
-    // If null (collected), re-select from DOM
-    if (!waterCans[i]) {
-      // Try to find the can in the DOM by index
-      const cans = document.querySelectorAll('.water-can');
-      if (cans[i]) {
-        waterCans[i] = cans[i];
-        waterCans[i].style.display = '';
-      }
+  // Reset water cans
+  waterCans = Array.from(document.querySelectorAll('.water-can'));
+  for (let can of waterCans) {
+    can.style.display = '';
+  }
+
+  // Reset progress bar
+  waterProgress.style.width = '0%';
+
+  // Reset life drops to gray
+  for (let drop of lifeDrops) {
+    if (!drop.classList.contains('gray')) {
+      drop.classList.add('gray');
     }
   }
 }
@@ -108,29 +129,19 @@ document.addEventListener('keyup', (e) => {
 // Game loop
 function gameLoop() {
   // Horizontal movement
-  if (keys.left) {
-    velocityX = -moveSpeed;
-  } else if (keys.right) {
-    velocityX = moveSpeed;
-  } else {
-    velocityX = 0;
-  }
+  velocityX = keys.left ? -moveSpeed : keys.right ? moveSpeed : 0;
 
-  // Apply gravity
+  // Gravity
   velocityY += gravity;
-
-  // Update positions
   positionX += velocityX;
   positionY += velocityY;
-  onGround = false; // Reset onGround each frame
+  onGround = false;
 
   // Platform collision detection
   for (let platform of platforms) {
     const pRect = platform.getBoundingClientRect();
-    const playerRect = player.getBoundingClientRect();
     const worldRect = gameWorld.getBoundingClientRect();
 
-    // Convert platform and player rects to local positions
     const platX = pRect.left - worldRect.left;
     const platY = pRect.top - worldRect.top;
     const platW = platform.offsetWidth;
@@ -139,7 +150,6 @@ function gameLoop() {
     const playerW = player.offsetWidth;
     const playerH = player.offsetHeight;
 
-    // Check horizontal overlap
     const horizontalOverlap =
       positionX + playerW > platX &&
       positionX < platX + platW;
@@ -147,19 +157,16 @@ function gameLoop() {
     const playerBottom = positionY + playerH;
     const playerPrevBottom = playerBottom - velocityY;
 
-    // Check if landing on top of platform
     if (
       horizontalOverlap &&
       playerPrevBottom <= platY &&
       playerBottom >= platY
     ) {
-      // Landed on platform
       positionY = platY - playerH;
       velocityY = 0;
       onGround = true;
     }
 
-    // Optional: prevent jumping through platform from below
     const playerTop = positionY;
     const playerPrevTop = playerTop - velocityY;
     const platformBottom = platY + platH;
@@ -169,54 +176,123 @@ function gameLoop() {
       playerPrevTop >= platformBottom &&
       playerTop <= platformBottom
     ) {
-      // Hit platform from below
       positionY = platformBottom;
       velocityY = 0;
     }
   }
 
-  // Floor collision
+  // Ground collision
   if (positionY >= groundLevel) {
     positionY = groundLevel;
     velocityY = 0;
     onGround = true;
   }
 
-  // Wall boundaries
+  // Wall limits
   const maxX = gameWorld.clientWidth - player.clientWidth;
   if (positionX < 0) positionX = 0;
   if (positionX > maxX) positionX = maxX;
 
-  // Apply updated position
+  // Apply position
   player.style.left = `${positionX}px`;
   player.style.top = `${positionY}px`;
 
-  // Check collision with water cans
+  // Water can collection
   for (let i = 0; i < waterCans.length; i++) {
     const can = waterCans[i];
-    if (!can) continue; // Skip if already collected
-    // Get bounding rectangles
+    if (!can) continue;
+
     const canRect = can.getBoundingClientRect();
     const playerRect = player.getBoundingClientRect();
-    // Check for overlap (simple AABB collision)
+
     const isColliding =
       playerRect.left < canRect.right &&
       playerRect.right > canRect.left &&
       playerRect.top < canRect.bottom &&
       playerRect.bottom > canRect.top;
+
     if (isColliding) {
-      // Increase score by 100
+      // Update score
       score += 100;
-      // Update the score display
       scoreDisplay.textContent = `Score: ${score.toString().padStart(3, '0')}`;
-      // Remove the can from the game
+
+      // Hide the can
       can.style.display = 'none';
-      // Remove from array so we don't check again
       waterCans[i] = null;
+
+      // Show motivational message
+      const phrases = [
+        "Clean water collected!",
+        "Another step to safe wells!",
+        "Helping a village!",
+        "Water is life!",
+        "One drop at a time!"
+      ];
+      const message = phrases[Math.floor(Math.random() * phrases.length)];
+      showMessage(message);
+
+      // Light up next life-drop
+      const litIndex = lifeDrops.findIndex(drop => drop.classList.contains('gray'));
+      if (litIndex !== -1) {
+        lifeDrops[litIndex].classList.remove('gray');
+      }
+
+      // Update progress bar
+      const totalCans = document.querySelectorAll('.water-can').length;
+      const collectedCans = totalCans - waterCans.filter(Boolean).length;
+      const percent = (collectedCans / totalCans) * 100;
+      waterProgress.style.width = `${percent}%`;
+    }
+  }
+
+  // Water bottle collision
+  const waterBottle = document.querySelector('.water-bottle');
+  if (waterBottle && waterBottle.style.display !== 'none') {
+    const bottleRect = waterBottle.getBoundingClientRect();
+    const playerRect = player.getBoundingClientRect();
+
+    const isTouchingBottle =
+      playerRect.left < bottleRect.right &&
+      playerRect.right > bottleRect.left &&
+      playerRect.top < bottleRect.bottom &&
+      playerRect.bottom > bottleRect.top;
+
+    if (isTouchingBottle) {
+      score += 1000;
+      scoreDisplay.textContent = `Score: ${score.toString().padStart(3, '0')}`;
+      showMessage("💧 You found the big water!");
+      waterBottle.style.display = 'none';
+    }
+  }
+
+  // Goal door collision (ends the game)
+  const goalDoor = document.querySelector('.goal-door');
+  if (goalDoor) {
+    const playerRect = player.getBoundingClientRect();
+    const doorRect = goalDoor.getBoundingClientRect();
+    const isTouchingDoor =
+      playerRect.left < doorRect.right &&
+      playerRect.right > doorRect.left &&
+      playerRect.top < doorRect.bottom &&
+      playerRect.bottom > doorRect.top;
+
+    if (isTouchingDoor) {
+      // End game instead of loading next level
+      showMessage("🎉 You did it! Everyone has water!");
+      keys.left = keys.right = false;
+      clearInterval(timerInterval);
+
+      // Optional: Disable further movement
+      setTimeout(() => {
+        alert("Thanks for playing! Clean water saves lives.");
+        // Optionally reload or reset here
+        // location.reload();
+      }, 1000);
     }
   }
 
   requestAnimationFrame(gameLoop);
 }
 
+// Start the game loop
 gameLoop();

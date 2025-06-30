@@ -11,14 +11,19 @@
     <div id="game-container">
     <div id="hud">
         <div id="lives">
-            <img src="drop.png" class="life-drop">
-            <img src="drop.png" class="life-drop">
-            <img src="drop.png" class="life-drop gray">
+            <img src="img/water-can-transparent.png" class="life-drop gray">
+            <img src="img/water-can-transparent.png" class="life-drop gray">
+            <img src="img/water-can-transparent.png" class="life-drop gray">
         </div>
         <div id="timer">00:00</div>
         <div id="level">Level 1</div>
         <div id="score">Score: 000</div>
     </div>
+    <!-- Add this just inside the #game-container -->
+    <div id="water-progress-container">
+    <div id="water-progress"></div>
+    </div>
+
     <div id="game-world">
         <div class="platform" style="top: 300px; left: 100px;"></div>
         <div class="platform" style="top: 200px; left: 250px;"></div>
@@ -29,7 +34,8 @@
         <img class="drop water-can" src="img/water-can-transparent.png" style="top: 60px; left: 420px; transform: scale(2);">
 
 
-        <div class="water-bottle" style="top: 40px; left: 470px;"></div>
+        <img class="water-bottle" src="img/waterbottle.png" style="top: 40px; left: 470px; position: absolute;">
+
         <div class="goal-door" style="top: 40px; left: 530px;"></div>
 
         <div id="game-world">
@@ -37,6 +43,9 @@
 </div>
     </div>
 </div>
+<!-- Add this outside the game-container for floating messages -->
+<div id="message-container"></div>
+r
     <h2>Press R To Reset Game State!</h2>
     <script src="script.js"></script>
 </body>
